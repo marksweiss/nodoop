@@ -1,20 +1,17 @@
-main = (args) ->
-  procArgs = args.slice(2)
+conf = require('./config.js').config
 
-  # TEMP DEBUG
-  console.log procArgs
-  console.log arg for arg in procArgs
-
-  inFilePath = procArgs[0]
-  outFilePath = procArgs[1]
-  # TODO arbitrary list of mappers and reducers
-  mapper = procArgs[2] 
-  reducer = procArgs[3]
+getCli = (args) ->
+  inFilePath = args[0]
+  outFilePath = args[1]
+  mapper = args[2] 
+  reducer = args[3]
   
-  [inFilePath, outFilePath, mapper, reducer]
+  hadoopCli = "#{conf.hadoopBinPath}/hadoop jar #{conf.hadoopHome}/contrib/streaming/hadoop-*-streaming.jar \\\n
+-input #{inFilePath} \\\n
+-output #{outFilePath} \\\n
+-mapper #{mapper} \\\n
+-reducer #{reducer}"
 
-# TODO Call here with main(process.argv) IF run from CLI
-exports.main = main
+  hadoopCli
 
-# TODO PASS THIS TEST
-# TODO REAL TEST FRAMEWORK
+exports.getCli = getCli
