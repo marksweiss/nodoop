@@ -1,16 +1,20 @@
+`#!/usr/local/bin/node
+// Coffee hack to include shebang literal`
+
 main = require './main.js'
-U = require './util.js'
+U = require './util/util.js'
 conf = require('./config.js').config
+Mapper = require('./test/map/map.js').Mapper
 assert = require('assert')
 exec = require('child_process').exec
-  
-# Tests
+fs = require 'fs'
 
-test_getCli = () ->
-  testName = 'test_getCli'
+# Tests
+test_getCl = () ->
+  testName = 'test_getCl'
   
-  inFilePath = '/Users/admin/Sites/nodoop/test/in'
-  outFilePath = '/Users/admin/Sites/nodoop/test/out'
+  inFilePath = '/hdfs/Users/admin/Sites/nodoop/test/in/testin.txt'
+  outFilePath = '/hdfs/Users/admin/Sites/nodoop/test/out'
   mapper = '/Users/admin/Sites/nodoop/test/map/map.js'
   reducer = '/Users/admin/Sites/nodoop/test/reduce/reduce.js'
   args = [inFilePath, outFilePath, mapper, reducer]
@@ -19,39 +23,63 @@ test_getCli = () ->
 -input #{inFilePath} \\\n
 -output #{outFilePath} \\\n
 -mapper #{mapper} \\\n
--reducer #{reducer}"
-  actual = main.getCli args  
+-reducer #{reducer} \\\n
+-file #{mapper} \\\n
+-file #{reducer}"
+  actual = main.getCl args  
   result = (expected == actual)
   
   U.printAssert(expected, actual, result, "#{testName} passed", "#{testName} failed")
   assert.ok(result, '')
 #
-test_getCli()
+test_getCl()
+
+test_map = () ->
+  testName = 'test_map'  
+  outFile = './out/test_map_out.txt'
+  inStrm = fs.createReadStream './in/testin.txt', encoding: 'utf8'
+  outStrm = fs.createWriteStream outFile, {encoding: 'utf8', flag: 'a'} # 'a' mode appends writes
+  mapper = new Mapper outStrm
+  
+  # Implement map operation on eacy line of data, using whatever logic you want and
+  #  outputting to whatever output stream passed to the Mapper constructor
+  mapper.on 'data', (data, outStrm) ->
+    tkns = data.split(///\s+///)
+    for tkn in tkns
+      outStrm.write tkn.trim() + "\t\n", encoding='utf8'
+  
+  # Collect and test results
+  mapper.on 'end', (finalStr, outStrm) ->
+    expected = "hello\t\nworld\t\nhello\t\ngoodbye\t\nI\t\nam\t\na\t\nchicken"
+    # Handle the 'drain' event, which fires after writing to stream completed
+    outStrm.on 'drain', ->
+      # Write EOF to the file so that #fs.readFileSync() can read from it
+      outStrm.end()
+      # Set actual here in scope of handler, where we know outStrm is done writing to and we can read it 
+      actual = finalStr = (fs.readFileSync outFile, encoding='utf8').trim()
+      # Test expected == actual here in handler scope, because otherwise actual falls out of scope
+      result = (expected == actual)
+      U.printAssert(expected, actual, result, "#{testName} passed", "#{testName} failed")
+
+    outStrm.on 'error', (error) ->
+      U.print 'ERROR'
+      U.print error
+  
+  mapper.map inStrm  
+#
+test_map()
 
 test_mainRunIt = () ->
   testName = 'test_mainRunIt'
  
-  inFilePath = '/Users/admin/Sites/nodoop/test/in'
-  outFilePath = '/Users/admin/Sites/nodoop/test/out'
+  inFilePath = '/hdfs/Users/admin/Sites/nodoop/test/in/testin.txt'
+  outFilePath = '/hdfs/Users/admin/Sites/nodoop/test/out'
   mapper = '/Users/admin/Sites/nodoop/test/map/map.js'
   reducer = '/Users/admin/Sites/nodoop/test/reduce/reduce.js'
   args = [inFilePath, outFilePath, mapper, reducer]
-  cli = main.getCli args
- 
-  # TODO FAILING NEXT THING TO FIX IS
-  # HashBang node line at top of map and reduce not being preserved by coffee compiler
-  # If no answer conver these to JavaScript for now and open an issue to fix it
-
-  # marksweiss: question: is there a way to pass through a shebang line at the top of a .coffee file into the .js output?
-  # [09:40am] esparkma_ joined the chat room.
-  # [09:41am] esparkman left the chat room. (Read error: No route to host)
-  # [09:41am] TheJH: marksweiss, there are a quick way and a clean way, I think
-  # [09:42am] TheJH: marksweiss, the quick way only works if you use the -b option and is that you put this on the first line: `#! /whatever
-  # [09:42am] TheJH: the second whatever-it-is-called-thing (`) comes on the second line
-  # [09:44am] marksweiss: OK thanks! I'll look at thtat
- 
- 
-  child = exec cli, (error, stdout, stderr) ->
+  cl = main.getCl args
+  
+  child = exec cl, (error, stdout, stderr) ->
     if error?
       U.print('exec error: ' + error + "\n") 
       U.print 'error code: ' + error.code + "\n"
@@ -63,4 +91,4 @@ test_mainRunIt = () ->
   # U.printAssert(expected, actual, result, "#{testName} passed", "#{testName} failed")
   # assert.ok(result, '')
 #
-test_mainRunIt()
+# test_mainRunIt()

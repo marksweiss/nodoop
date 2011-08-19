@@ -2,14 +2,14 @@
 // Coffee hack to include shebang literal`
 
 Lazy = require 'lazy'
-U = require './util.js'
+U = require '../../util.js'
 
 lastWord = ''
 wordTotal = 0
-new Lazy(process.stdin).lines.forEach(line) -> 
-  word = line.trim
+new Lazy(process.stdin).lines.forEach (line) -> 
+  word = line.split("\t")[0]
   if lastWord isnt word
-    U.print(lastWord + ' ' + wordTotal)  # Maps operate by side-effect, namely printing lines of output to stdout
+    U.print(lastWord + "\t" + wordTotal)  # Maps operate by side-effect, namely printing lines of output to stdout
     lastWord = word
     wordTotal = 1
   else
