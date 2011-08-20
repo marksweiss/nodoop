@@ -1,10 +1,10 @@
 `#!/usr/local/bin/node
 // Coffee hack to include shebang literal`
 
-main = require './main.js'
-U = require './util/util.js'
-conf = require('./config.js').config
-Mapper = require('./test/map/map.js').Mapper
+main = require '../main.js'
+U = require '../util/util.js'
+conf = require('../config.js').config
+Mapper = require('../map.js').Mapper
 assert = require('assert')
 exec = require('child_process').exec
 fs = require 'fs'
@@ -30,43 +30,53 @@ test_getCl = () ->
   result = (expected == actual)
   
   U.printAssert(expected, actual, result, "#{testName} passed", "#{testName} failed")
-  assert.ok(result, '')
+  return
 #
 test_getCl()
 
 test_map = () ->
   testName = 'test_map'  
-  outFile = './out/test_map_out.txt'
-  inStrm = fs.createReadStream './in/testin.txt', encoding: 'utf8'
-  outStrm = fs.createWriteStream outFile, {encoding: 'utf8', flag: 'a'} # 'a' mode appends writes
-  mapper = new Mapper outStrm
-  
-  # Implement map operation on eacy line of data, using whatever logic you want and
-  #  outputting to whatever output stream passed to the Mapper constructor
-  mapper.on 'data', (data, outStrm) ->
+  outFile = '../out/test_map_out.txt'
+  inStrm = fs.createReadStream '../in/testin.txt', encoding: 'utf8'
+  outStrm = fs.createWriteStream outFile, {encoding: 'utf8', flag: 'a'} # 'a' mode appends writes  
+    
+  # Implement map operation on each line of data, using whatever logic you want and
+  #  outputting to whatever output stream passed to the Mapper constructor.
+  # Note that really streaming against Hadoop requires writing to stdout, which is the default in Mapper ctor
+  dataCb = (data, outStrm) ->
     tkns = data.split(///\s+///)
     for tkn in tkns
       outStrm.write tkn.trim() + "\t\n", encoding='utf8'
+    return
   
   # Collect and test results
-  mapper.on 'end', (finalStr, outStrm) ->
-    expected = "hello\t\nworld\t\nhello\t\ngoodbye\t\nI\t\nam\t\na\t\nchicken"
+  endCb = (outStrm) ->
+    expected = "hello\t\nworld\t\nhello\t\ngoodbye\t\nI\t\nam\t\na\t\nchicken"    
+
     # Handle the 'drain' event, which fires after writing to stream completed
     outStrm.on 'drain', ->
       # Write EOF to the file so that #fs.readFileSync() can read from it
+      # Note that destroying the stream here led to errors. Don't know why.
       outStrm.end()
-      # Set actual here in scope of handler, where we know outStrm is done writing to and we can read it 
-      actual = finalStr = (fs.readFileSync outFile, encoding='utf8').trim()
+      # Set actual here in scope of handler, where we know outStrm is done writing to and we can read the file it wrote 
+      actual = (fs.readFileSync outFile, encoding='utf8').trim()
       # Test expected == actual here in handler scope, because otherwise actual falls out of scope
       result = (expected == actual)
       U.printAssert(expected, actual, result, "#{testName} passed", "#{testName} failed")
+      return
 
     outStrm.on 'error', (error) ->
       U.print 'ERROR'
+      # Print this way because concatting on one line prints a less complete string repr of the error object
       U.print error
+      return
+
+    return  
   
-  mapper.map inStrm  
-#
+  mapper = new Mapper(inStrm, outStrm, dataCb, endCb)
+  mapper.map()
+  return
+
 test_map()
 
 test_mainRunIt = () ->
