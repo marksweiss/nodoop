@@ -6,7 +6,7 @@ U = require '../../util.js'
 
 lastWord = ''
 wordTotal = 0
-new Lazy(process.stdin).lines.forEach (line) -> 
+new Lazy(process.stdin).forEach (line) -> 
   word = line.split("\t")[0]
   if lastWord isnt word
     U.print(lastWord + "\t" + wordTotal)  # Maps operate by side-effect, namely printing lines of output to stdout
