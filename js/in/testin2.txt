@@ -1,3 +1,3 @@
-hello world
-hello goodbye
-I am a chicken
+123	Snippy Jackson|212-555-1212|45
+456	Wanda Jenkins|212-555-1313|29
+789	Chuck Norris|718-555-1414|58

@@ -9,7 +9,7 @@ printAssert = (expected, actual, result, passMsg, failMsg) ->
   if result
     print passMsg
   else
-    print "EXPECTED #{expected} != ACTUAL #{actual}.  result == #{result}\n"
+    print "EXPECTED\n#{expected}\n!= ACTUAL\n#{actual}\nresult == #{result}\n"
     assert.ok(result, failMsg)
 exports.printAssert = printAssert
 
@@ -21,3 +21,10 @@ debugLog = (msg) ->
 exports.debugLog = debugLog
 exports.debugLogFile = debugLogFile
 
+isString = (obj) ->
+	typeof obj == 'string'
+exports.isString = isString
+
+isUndefined = (obj) ->
+	typeof obj == 'undefined'
+exports.isUndefined = isUndefined

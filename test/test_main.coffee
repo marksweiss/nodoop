@@ -33,8 +33,6 @@ test_getCl = () ->
   
   U.printAssert(expected, actual, result, "#{testName} passed", "#{testName} failed")
   return
-#
-test_getCl()
 
 test_mapper_map = () ->
   testName = 'test_mapper_map'  
@@ -49,6 +47,7 @@ test_mapper_map = () ->
     tkns = data.split(///\s+///)
     for tkn in tkns
       tkn = tkn.trim()
+      # Concatting tab here is manually delimiting key and rest of line in Hadoop streaming convention
       outStrm.write(tkn + "\t\n", encoding='utf8') if tkn.length > 0
     return
   
@@ -79,26 +78,140 @@ test_mapper_map = () ->
   mapper = new Mapper(dataCb, endCb, inStrm, outStrm)
   mapper.map()
   return
-#
-test_mapper_map()
 
-test_structured_mapper_map = () ->
-  testName = 'test_structured_mapper_map'  
+test_mapper_map_key_and_rest = () ->
+  testName = 'test_mapper_map_key_and_rest'  
   outFile = '../out/test_map_out2.txt'
   inStrm = fs.createReadStream '../in/testin2.txt', encoding: 'utf8'
   outStrm = fs.createWriteStream outFile, {encoding: 'utf8', flag: 'a'} # 'a' mode appends writes  
-  delim = ' '
+  
+  # CB gets line of data, outputStrm passed to Mapper, and two helpers mapper,
+  #  one for splitting input line into key and rest, other for building output line from key and rest
+  dataCb = (data, outStrm, splitLineCb, buildLineCb) ->
+    # Silly mock helper something like what you'd use with structured data
+    areaCodeToCity = (phoneNum) ->
+      return 'Manhattan' if phoneNum[0..2] == '212'
+      return 'Unknown'
     
-  # This version of the Mapper provides data as an array of trimmed tokens split on delim
-  dataCb = (data, outStrm) ->    
-    for tkn in data
-      tkn = tkn.trim()      
-      outStrm.write tkn.toString() + "\t\n", encoding='utf8'
+    # Split the line into array of key string and rest of the line string
+    # Non-Structured Mapper splits on Hadoop streaming default to delimit the key, which is tab
+    [key, rest] = splitLineCb data
+    # Client has to know how to parse rest of the line with unstructured mapper    
+    rest = rest.split('|')
+    # Derive and append an additional value and it to the fields in rest
+    phoneNum = rest[1]
+    city = areaCodeToCity phoneNum
+    rest.push city
+    # Convert fields back to delimited string with same | delimiter
+    rest = rest.join('|')
+    # Build line using the helper provided by Mapper to this callback
+    line = buildLineCb(key, rest)
+    outStrm.write(line)
     return
   
   # Collect and test results
   endCb = (inStrm, outStrm) ->
-    expected = "hello\t\nworld\t\nhello\t\ngoodbye\t\nI\t\nam\t\na\t\nchicken"    
+    expected = "123\tSnippy Jackson|212-555-1212|45|Manhattan\n456\tWanda Jenkins|212-555-1313|29|Manhattan\n789\tChuck Norris|718-555-1414|58|Unknown"    
+
+    # Handle the 'drain' event, which fires after writing to stream completed
+    outStrm.on 'drain', ->
+      # Write EOF to the file so that #fs.readFileSync() can read from it
+      # Note that destroying the stream here led to errors. Don't know why.
+      outStrm.end()
+      # Set actual here in scope of handler, where we know outStrm is done writing to and we can read the file it wrote 
+      actual = (fs.readFileSync outFile, encoding='utf8').trim()
+      # Test expected == actual here in handler scope, because otherwise actual falls out of scope
+      result = (expected == actual)
+      U.printAssert(expected, actual, result, "#{testName} passed", "#{testName} failed")
+      return
+
+    outStrm.on 'error', (error) ->
+      U.print 'ERROR'
+      # Print this way because concatting on one line prints a less complete string repr of the error object
+      U.print error
+      return
+
+    return  
+  
+  mapper = new Mapper(dataCb, endCb, inStrm, outStrm)
+  mapper.map()
+  return
+
+# TODO THIS NO LONGER MAKES SENSE AS A USE CASE?
+
+# test_structured_mapper_map = () ->
+#   testName = 'test_structured_mapper_map'  
+#   outFile = '../out/test_map_out3.txt'
+#   inStrm = fs.createReadStream '../in/testin3.txt', encoding: 'utf8'
+#   outStrm = fs.createWriteStream outFile, {encoding: 'utf8', flag: 'a'} # 'a' mode appends writes  
+#     
+#   dataCb = (data, outStrm) ->
+#     delim = ' '
+#     tkns = splitLineCb(data, delim)
+#     for tkn in data
+#       tkn = tkn.trim()      
+#       outStrm.write tkn.toString() + "\t\n", encoding='utf8'
+#     return
+#   
+#   # Collect and test results
+#   endCb = (inStrm, outStrm) ->
+#     expected = "hello\t\nworld\t\nhello\t\ngoodbye\t\nI\t\nam\t\na\t\nchicken"    
+# 
+#     # Handle the 'drain' event, which fires after writing to stream completed
+#     outStrm.on 'drain', ->
+#       # Write EOF to the file so that #fs.readFileSync() can read from it
+#       # Note that destroying the stream here led to errors. Don't know why.
+#       outStrm.end()
+#       # Set actual here in scope of handler, where we know outStrm is done writing to and we can read the file it wrote 
+#       actual = (fs.readFileSync outFile, encoding='utf8').trim()
+#       # Test expected == actual here in handler scope, because otherwise actual falls out of scope
+#       result = (expected == actual)      
+#       U.printAssert(expected, actual, result, "#{testName} passed", "#{testName} failed")
+#       return
+# 
+#     outStrm.on 'error', (error) ->
+#       U.print 'ERROR'
+#       # Print this way because concatting on one line prints a less complete string repr of the error object
+#       U.print error
+#       return
+# 
+#     return  
+#   
+#   mapper = new StructuredMapper(dataCb, endCb, inStrm, outStrm)
+#   mapper.map()
+#   return
+
+test_structured_mapper_map_key_and_rest = () ->
+  testName = 'test_structured_mapper_map_key_and_rest'  
+  outFile = '../out/test_map_out4.txt'
+  inStrm = fs.createReadStream '../in/testin4.txt', encoding: 'utf8'
+  outStrm = fs.createWriteStream outFile, {encoding: 'utf8', flag: 'a'} # 'a' mode appends writes  
+  delim = '|'
+  
+  # This version of the Mapper provides data as an array of trimmed tokens split on delim
+  dataCb = (data, outStrm, splitLineCb, buildLineCb) ->
+    # Silly mock helper something like what you'd use with structured data
+    areaCodeToCity = (phoneNum) ->
+      return 'Manhattan' if phoneNum[0..2] == '212'
+      return 'Unknown'
+    
+    # Tell the callback being used to partition the fields in the row, which indexes are part of the key
+    keyIndexes = [0]
+    delim = '|'
+    # Return from StructuredMapper is an arra of two arrays, 
+    #  first is values from key fields in row, second is values from rest of fields in row
+    [key, rest] = splitLineCb(data, keyIndexes, delim)            
+    # Derive and append an additional value and it to the fields in rest
+    phoneNum = rest[1]
+    city = areaCodeToCity phoneNum
+    rest.push city
+    #
+    outStrm.write buildLineCb(key, rest, delim), encoding='utf8'
+    return
+  
+  # Collect and test results
+  endCb = (inStrm, outStrm) ->
+    expected = "123\tSnippy Jackson|212-555-1212|45|Manhattan\n456\tWanda Jenkins|212-555-1313|29|Manhattan\n789\tChuck Norris|718-555-1414|58|Unknown"    
 
     # Handle the 'drain' event, which fires after writing to stream completed
     outStrm.on 'drain', ->
@@ -120,11 +233,9 @@ test_structured_mapper_map = () ->
 
     return  
   
-  mapper = new StructuredMapper(dataCb, delim, endCb, inStrm, outStrm)
-  mapper.map()
+  mapper = new StructuredMapper(dataCb, endCb, inStrm, outStrm)
+  mapper.map(delim)
   return
-#
-test_structured_mapper_map()
 
 test_reduce = () ->
   testName = 'test_reduce'  
@@ -158,8 +269,6 @@ test_reduce = () ->
   reducer = new Reducer() # TODO ARGS
   reducer.reduce()
   return
-#
-# test_reduce()
 
 # Integration test that tests HadoopMapper and integration with Hadoop streaming
 test_mainRunIt = () ->
@@ -183,5 +292,14 @@ test_mainRunIt = () ->
   
   # U.printAssert(expected, actual, result, "#{testName} passed", "#{testName} failed")
   # assert.ok(result, '')
-#
-# test_mainRunIt()
+
+
+runTests = ->
+  test_getCl()
+  test_mapper_map()
+  test_mapper_map_key_and_rest()
+  test_structured_mapper_map_key_and_rest()  
+  # test_reduce()
+  # test_mainRunIt()
+  
+runTests()
