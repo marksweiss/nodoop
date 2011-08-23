@@ -243,8 +243,8 @@ test_structured_mapper_map_key_and_rest = () ->
 # TODO To make reduce work, we need to append sentinel value as last line
 #  of input. Need to hide this in the plumbing that copies files into HDFS
 #  by having that code append sentinel values, which maps ignore but reduces rely on
-test_reduce = () ->
-  testName = 'test_reduce'
+test_reducer_reduce = () ->
+  testName = 'test_reducer_reduce'
   outFile = '../out/test_map_out5.txt'
   # NOTE TODO THIS IS THE FILE WITH THE DUMMY SENTINEL VALUE
   inStrm = fs.createReadStream '../in/testin5.txt', encoding: 'utf8'
@@ -283,6 +283,47 @@ test_reduce = () ->
   reducer.reduce()
   return
 
+test_structured_reducer_reduce = () ->
+  testName = 'test_structured_reducer_reduce'
+  outFile = '../out/test_map_out6.txt'
+  # NOTE TODO THIS IS THE FILE WITH THE DUMMY SENTINEL VALUE
+  inStrm = fs.createReadStream '../in/testin6.txt', encoding: 'utf8'
+  outStrm = fs.createWriteStream outFile, {encoding: 'utf8', flag: 'a'} # 'a' mode appends writes  
+  delim = '|'
+
+  # Simplest possible word count implementation. Run counter while key is the same
+  #  and when it flips to the next one record a row of last key just passed
+  #  and accumulated count and reset counter
+  count = 1
+  dataSameKeyCb = (key, rest, outStrm, buildLineCb) -> 
+    count += 1
+  dataNewKeyCb = (lastKey, rest, outStrm, buildLineCb) ->    
+    outStrm.write buildLineCb(lastKey, count + '', delim)
+    count = 1
+
+  # Collect and test results
+  endCb = (inStrm, outStrm) ->
+    expected = "a\t1\nam\t1\nchicken\t1\ngoodbye\t1\nhello\t2\nI\t1\nworld\t1"
+    
+    # Handle the 'drain' event, which fires after writing to stream completed
+    outStrm.on 'drain', ->
+      outStrm.end()
+      actual = (fs.readFileSync outFile, encoding='utf8').trim()
+      result = (expected == actual)      
+      U.printAssert(expected, actual, result, "#{testName} passed", "#{testName} failed")
+      return
+
+    outStrm.on 'error', (error) ->
+      U.print 'ERROR'
+      U.print error
+      return
+
+    return  
+
+  reducer = new Reducer(dataSameKeyCb, dataNewKeyCb, endCb, inStrm, outStrm)
+  reducer.reduce(delim)
+  return
+
 # Integration test that tests HadoopMapper and integration with Hadoop streaming
 test_mainRunIt = () ->
   testName = 'test_mainRunIt'
@@ -312,7 +353,8 @@ runTests = ->
   test_mapper_map()
   test_mapper_map_key_and_rest()
   test_structured_mapper_map_key_and_rest()  
-  test_reduce()
+  test_reducer_reduce()
+  test_structured_reducer_reduce()
   # test_mainRunIt()
   
 runTests()

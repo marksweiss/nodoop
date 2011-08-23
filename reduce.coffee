@@ -5,20 +5,6 @@ Lazy = require 'lazy'
 U = require './util/util.js'
 EventEmitter = require('events').EventEmitter
 
-# lastWord = ''
-# wordTotal = 0
-# new Lazy(process.stdin).forEach (line) -> 
-#   word = line.split("\t")[0]
-#   if lastWord isnt word
-#     U.print(lastWord + "\t" + wordTotal)  # Maps operate by side-effect, namely printing lines of output to stdout
-#     lastWord = word
-#     wordTotal = 1
-#   else
-#     wordTotal += 1
-#   return  # Coffee hack to generate JS function with no return value
-#          
-# process.stdin.resume()
-
 class ReducerBase extends EventEmitter
   constructor: (dataSameKeyCb, dataNewKeyCb, endCb, inStrm, outStrm) ->
     @dataSameKeyCb = dataSameKeyCb
@@ -101,8 +87,6 @@ class StructuredReducerBase extends EventEmitter
         [key, rest]
           
       [key, rest] = splitKeyAndRest(rec, keyIndexes)
-      key = key.trim()
-      rest = rest.trim()      
       if key.length > 0
         if key is lastKey
           # For multiple rows on same key, client maintains state in callback
