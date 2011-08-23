@@ -93,11 +93,7 @@ class StructuredMapperBase extends EventEmitter
   
   # Now stringify because building output to write to outStrm
   buildKeyAndRest: (key, rest, delim) -> 
-    kOut = []
-    rOut = []
-    kOut.push k for k in key
-    rOut.push r for r in rest
-    kOut.join(delim) + "\t" + rOut.join(delim) + "\n" 
+    key.join(delim) + "\t" + rest.join(delim) + "\n" 
 
 
 # Separate parent class to have mapper object and handle data and end events on it
@@ -105,10 +101,10 @@ class StructuredMapperBase extends EventEmitter
 class Mapper
   constructor: (dataCb = null, endCb = null, inStrm = null, outStrm = null) ->
     # Default values will create pass through mapper from stdin to stdout
-    inStrm or= process.stdin
-    outStrm or= process.stdout
     dataCb or= (data, outStrm) -> outStrm.write data
     endCb or= (inStrm, outStrm) -> inStrm.resume()
+    inStrm or= process.stdin
+    outStrm or= process.stdout
     @mapper = new MapperBase(dataCb, endCb, inStrm, outStrm)
 
   map: ->
@@ -119,13 +115,13 @@ class Mapper
 
 
 class StructuredMapper
-  constructor: (dataCb = null, delim = ' ', endCb = null, inStrm = null, outStrm = null) ->
+  constructor: (dataCb = null, endCb = null, inStrm = null, outStrm = null) ->
     # Default values will create pass through mapper from stdin to stdout
-    inStrm or= process.stdin
-    outStrm or= process.stdout
     dataCb or= (data, outStrm) -> outStrm.write data
     endCb or= (inStrm, outStrm) -> inStrm.resume()
-    @mapper = new StructuredMapperBase(dataCb, delim, endCb, inStrm, outStrm)
+    inStrm or= process.stdin
+    outStrm or= process.stdout
+    @mapper = new StructuredMapperBase(dataCb, endCb, inStrm, outStrm)
 
   map: (delim) ->
     @mapper.on 'data', (data, outStrm, dataCb, splitLineCb, buildLineCb) -> 

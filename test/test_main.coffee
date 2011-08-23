@@ -7,6 +7,8 @@ conf = require('../config.js').config
 Mapper = require('../map.js').Mapper
 StructuredMapper = require('../map.js').StructuredMapper
 HadoopMapper = require('../map.js').HadoopMapper
+Reducer = require('../reduce.js').Reducer
+
 assert = require('assert')
 exec = require('child_process').exec
 fs = require 'fs'
@@ -237,25 +239,36 @@ test_structured_mapper_map_key_and_rest = () ->
   mapper.map(delim)
   return
 
+# NOTE!!!!! GIANT TODO HERE
+# TODO To make reduce work, we need to append sentinel value as last line
+#  of input. Need to hide this in the plumbing that copies files into HDFS
+#  by having that code append sentinel values, which maps ignore but reduces rely on
 test_reduce = () ->
-  testName = 'test_reduce'  
-  outFile = '../out/test_reduce_out.txt'
-  inStrm = fs.createReadStream '../out/test_map_out.txt', encoding: 'utf8'
+  testName = 'test_reduce'
+  outFile = '../out/test_map_out5.txt'
+  # NOTE TODO THIS IS THE FILE WITH THE DUMMY SENTINEL VALUE
+  inStrm = fs.createReadStream '../in/testin5.txt', encoding: 'utf8'
   outStrm = fs.createWriteStream outFile, {encoding: 'utf8', flag: 'a'} # 'a' mode appends writes  
-    
-  dataCb = (data, outStrm) ->
-    # pass
-    return
   
+  # Simplest possible word count implementation. Run counter while key is the same
+  #  and when it flips to the next one record a row of last key just passed
+  #  and accumulated count and reset counter
+  count = 1
+  dataSameKeyCb = (key, rest, outStrm, buildLineCb) -> 
+    count += 1
+  dataNewKeyCb = (lastKey, rest, outStrm, buildLineCb) ->    
+    outStrm.write buildLineCb(lastKey, count + '')
+    count = 1
+
   # Collect and test results
-  endCb = (outStrm) ->
-    expected = "" # TODO Expected
+  endCb = (inStrm, outStrm) ->
+    expected = "a\t1\nam\t1\nchicken\t1\ngoodbye\t1\nhello\t2\nI\t1\nworld\t1"
 
     # Handle the 'drain' event, which fires after writing to stream completed
     outStrm.on 'drain', ->
       outStrm.end()
       actual = (fs.readFileSync outFile, encoding='utf8').trim()
-      result = (expected == actual)
+      result = (expected == actual)      
       U.printAssert(expected, actual, result, "#{testName} passed", "#{testName} failed")
       return
 
@@ -266,7 +279,7 @@ test_reduce = () ->
 
     return  
   
-  reducer = new Reducer() # TODO ARGS
+  reducer = new Reducer(dataSameKeyCb, dataNewKeyCb, endCb, inStrm, outStrm)
   reducer.reduce()
   return
 
@@ -299,7 +312,7 @@ runTests = ->
   test_mapper_map()
   test_mapper_map_key_and_rest()
   test_structured_mapper_map_key_and_rest()  
-  # test_reduce()
+  test_reduce()
   # test_mainRunIt()
   
 runTests()
