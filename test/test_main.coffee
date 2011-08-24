@@ -330,8 +330,8 @@ test_mainRunIt = () ->
  
   inFilePath = '/hdfs/Users/admin/Sites/nodoop/test/in/testin.txt'
   outFilePath = '/hdfs/Users/admin/Sites/nodoop/test/out'
-  mapper = '/Users/admin/Sites/nodoop/test/map/test_map.js'
-  reducer = '/Users/admin/Sites/nodoop/test/reduce/test_reduce.js'
+  mapper = '/Users/admin/Dropbox/projects/nodoop/js/test/test_map.js'
+  reducer = '/Users/admin/Dropbox/projects/nodoop/js/test/test_reduce.js'
   args = [inFilePath, outFilePath, mapper, reducer]
   cl = main.getCl args
   
@@ -355,6 +355,6 @@ runTests = ->
   test_structured_mapper_map_key_and_rest()  
   test_reducer_reduce()
   test_structured_reducer_reduce()
-  # test_mainRunIt()
+  test_mainRunIt()
   
 runTests()

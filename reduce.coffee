@@ -146,6 +146,20 @@ class StructuredReducer
     @reducer.on 'end', (inStrm, outStrm, endCb) -> endCb(inStrm, outStrm)
     @reducer.reduce(delim)
 
+
+# Wrapper to present an interface that only needs a data callback
+#  to process each row, and uses defaults for stdin, stdout, and no-op end callback
+# This is the minimum default necessary for Hadoop streaming.
+class HadoopReducer extends Reducer
+  constructor: (dataCb) ->
+    super(dataCb)
+
+class HadoopStructuredReducer extends StructuredReducer
+  constructor: (dataCb, delim = ' ') ->
+    super(dataCb, delim)
+
 # Export the class to allow construction with or without outStrm arg
 exports.Reducer = Reducer
 exports.StructuredReducer = StructuredReducer
+exports.HadoopReducer = HadoopReducer
+exports.HadoopStructuredReducer = HadoopStructuredReducer
