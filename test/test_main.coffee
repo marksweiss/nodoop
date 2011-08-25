@@ -14,28 +14,6 @@ exec = require('child_process').exec
 fs = require 'fs'
 
 # Tests
-test_getCl = () ->
-  testName = 'test_getCl'
-  
-  inFilePath = '/hdfs/Users/admin/Sites/nodoop/test/in/testin.txt'
-  outFilePath = '/hdfs/Users/admin/Sites/nodoop/test/out'
-  mapper = '/Users/admin/Sites/nodoop/test/map/map.js'
-  reducer = '/Users/admin/Sites/nodoop/test/reduce/reduce.js'
-  args = [inFilePath, outFilePath, mapper, reducer]
-
-  expected = "#{conf.hadoopBinPath}/hadoop jar #{conf.hadoopStreamingJar} \\\n
--input #{inFilePath} \\\n
--output #{outFilePath} \\\n
--mapper #{mapper} \\\n
--reducer #{reducer} \\\n
--file #{mapper} \\\n
--file #{reducer}"
-  actual = main.getCl args  
-  result = (expected == actual)
-  
-  U.printAssert(expected, actual, result, "#{testName} passed", "#{testName} failed")
-  return
-
 test_mapper_map = () ->
   testName = 'test_mapper_map'  
   outFile = '../out/test_map_out.txt'
@@ -324,37 +302,52 @@ test_structured_reducer_reduce = () ->
   reducer.reduce(delim)
   return
 
-# Integration test that tests HadoopMapper and integration with Hadoop streaming
-test_mainRunIt = () ->
-  testName = 'test_mainRunIt'
- 
+test_getJobCl = () ->
+  testName = 'test_getJobCl'
+
   inFilePath = '/hdfs/Users/admin/Sites/nodoop/test/in/testin.txt'
   outFilePath = '/hdfs/Users/admin/Sites/nodoop/test/out'
+  mapper = '/Users/admin/Sites/nodoop/test/map/map.js'
+  reducer = '/Users/admin/Sites/nodoop/test/reduce/reduce.js'
+  args = [inFilePath, outFilePath, mapper, reducer]
+
+  expected = "#{conf.hadoopBinPath}hadoop jar #{conf.hadoopStreamingJar} \\\n
+-input #{inFilePath} \\\n
+-output #{outFilePath} \\\n
+-mapper #{mapper} \\\n
+-reducer #{reducer} \\\n
+-file #{mapper} \\\n
+-file #{reducer}"
+  actual = main.getJobCl args  
+  result = (expected == actual)
+
+  U.printAssert(expected, actual, result, "#{testName} passed", "#{testName} failed")
+  return
+
+# Integration test that tests HadoopMapper and integration with Hadoop streaming
+test_run = () ->
+  testName = 'test_run'
+ 
+  inFilePath = '/Users/admin/Sites/nodoop/test/in/'
+  outFilePath = '/Users/admin/Sites/nodoop/test/out/'
   mapper = '/Users/admin/Dropbox/projects/nodoop/js/test/test_map.js'
   reducer = '/Users/admin/Dropbox/projects/nodoop/js/test/test_reduce.js'
-  args = [inFilePath, outFilePath, mapper, reducer]
-  cl = main.getCl args
-  
-  child = exec cl, (error, stdout, stderr) ->
-    if error?
-      U.print('exec error: ' + error + "\n") 
-      U.print 'error code: ' + error.code + "\n"
-      U.print 'error signal: ' + error.signal + "\n"
-      U.print "stderr: \n" + stderr
-    else
-      U.print stdout
+  reloadInFilesFlag = true
+
+  args = [inFilePath, outFilePath, mapper, reducer, reloadInFilesFlag]  
+  main.run args
   
   # U.printAssert(expected, actual, result, "#{testName} passed", "#{testName} failed")
   # assert.ok(result, '')
 
 
 runTests = ->
-  test_getCl()
   test_mapper_map()
   test_mapper_map_key_and_rest()
   test_structured_mapper_map_key_and_rest()  
   test_reducer_reduce()
   test_structured_reducer_reduce()
-  test_mainRunIt()
+  test_getJobCl()
+  test_run()
   
 runTests()

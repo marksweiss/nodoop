@@ -14,4 +14,4 @@ reduce = (inStrm) ->
   reducer.reduce()
   return
 
-reduce(inStrm)
+reduce(process.stdin)

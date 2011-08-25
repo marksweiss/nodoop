@@ -25,4 +25,4 @@ map = (inStrm) ->
   mapper.map()
   return
 
-map(inStrm)
+map(process.stdin)

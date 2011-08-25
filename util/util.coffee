@@ -13,6 +13,13 @@ printAssert = (expected, actual, result, passMsg, failMsg) ->
     assert.ok(result, failMsg)
 exports.printAssert = printAssert
 
+printErr = (err) ->
+  print("exec error:\n" + err + "\n") 
+  print 'error code: ' + err.code + "\n"
+  print 'error signal: ' + err.signal + "\n"
+  print "stderr: \n" + process.stderr
+exports.printErr = printErr
+
 debugLogFile = 'debug_log.txt'
 debugLog = (msg) ->
   fs = require 'fs'
