@@ -29,14 +29,14 @@ run = (args) ->
   removeOutputDirCl = "#{conf.hadoopBinPath}hadoop dfs -rmr #{outFilePath}"
   exec removeOutputDirCl, (err, stdout, stderr) ->
     U.printErr err if err?
-    return if err? and err.code == '255'  # '255 == No such file or directory'
+    return if err? and err.code != '255'  # '255 == No such file or directory'
     # Clear previous files from HDFS path for input files if flag set
     clearInFilesFlag = args[4]
     clearInFilesCl = "#{conf.hadoopBinPath}hadoop dfs -rm #{inFilePath}*.txt"
     if clearInFilesFlag
       exec clearInFilesCl, (err, stdout, stderr) ->
         U.printErr err if err?
-        return if err? and err.code == '255' # '255 == No such file or directory'
+        return if err? and err.code != '255' # '255 == No such file or directory'
         # Load the input files for this run from local directory into HDFS
         loadInFilesCl = "#{conf.hadoopBinPath}hadoop dfs -put #{inFilePath}*.txt #{inFilePath}"        
         child = exec loadInFilesCl, (err, stdout, stderr) ->
