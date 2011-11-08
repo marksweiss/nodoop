@@ -1,5 +1,6 @@
 fs = require 'fs'
 assert = require('assert')
+# Dummy comment
 
 print = (msg) ->
   console.log msg
